@@ -40,10 +40,12 @@ Example executes branch in MEM stage, eventually it'll get to ID
 **Structural hazard** certain instructions cannot overlap with load/store when its at the IF stage (*resource conflicts*)
 * *solution*: separate those instructions and data memories
 * multiple instructions are tryiing to **use the same hardware on the DP**
+    * A component in the data path that is needed y **2 pipeline stages simutaneously**
+    * Reg file access is allowed twice in one clock cycle (Write first, then read)
 
 
-**Control Hazard** conditional branch instruction may change **the seq of code is executed**
-* PC updated by BRANCH or JUMP instr
+**Control Hazard** change the flow of instruction execution
+* ie: PC updated by BRANCH or JUMP instr
 * when we start the next instruction?
 
 **Data Hazard** the result of one instr is **need by next** (or subsequent) instruction(s)
@@ -119,8 +121,7 @@ To avoid excessive flushing: move **branch execution to ID**
 * move equality test to ID (avoid ALU) 
 * calculate branch address calc to ID 
 * [only need to flush the instruction that was just fetched in **IF/ID**](./pictures/branch_flush.png)
-    *  the **IF.Flush** control bit turns whatever's in IF into a **NOP**
-    * clears all instruction bits in IF/ID register
+    *  the **IF.Flush** control bit turns whatever's in IF into a **NOP** (clears all instruction bits in IF/ID register)
 
 [Hardware to Execute Branch in ID](./pictures/branch_in_id.png)
 
@@ -137,3 +138,49 @@ How to handle this (possibly errant instruction)
 Code rearangement guidelines
 * Don't swap code with data dependencies
 * Don't swap into or out of loops
+
+Examples of runtimes
+* [Branching in MEM](./pictures/branch_mem_cc.png)
+    * $+ 4$ for pipeline startup time
+    * total clockcylces is $182 + 4 = 186$
+* [Branching in ID](./pictures/branch_id_cc.png)
+* [Branching in ID with Code Rearrangement](./pictures/branch_rearrangement_cc.png)
+    * we want to fill the branch delay slots (1 for ID 3 for MEM) with instructions in the loop or NOPS
+
+---
+**
+### Exceptions
+
+**Interupt** external event unexpected changed the **control flow (I/O)**
+
+**Exception** internal even that changes the **control flow** *arithmetic overflow*
+
+Two general ways of finding what caused exception
+* **cause register** status register that holds field noting cause
+    * OS checks cause CR to process exception
+* **vector interrupts** table of addresses, each address maps to a type of exception
+    * when an interruption A occurs, branch to routine that process the interruption
+    * OS can determine exception type by looking up address in table
+* MIPS uses cause regs
+* [Hardware to handle exceptions](./pictures/exception_hardware.png)
+
+Example:
+```mips
+40 sub $11, $2, $4
+44 and $12, $2, $5
+48 or $13, $2, $6
+4C add $1, $2, $1 ; this will cause the exception
+50 slt $15, $6, $7
+54 lw $16, 50($7)
+```
+
+Exception handller code is addresses in HEX
+
+OS will kick in to handle exception
+
+```mips
+40000040 sw $25, 1004($0)
+40000044 sw $26, 1004($0)
+```
+
+[Pipeline](./pictures/exception_example.png)
